@@ -20,9 +20,6 @@
       left: 0;
       right: 0;
       margin: auto;
-      max-width: 100vw;
-      max-height: 100vh;
-      aspect-ratio: 2 / 3;
     }
   </style>
 </head>
@@ -33,9 +30,41 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    canvas.width = 400;
-    canvas.height = 600;
-    // CSS handles visual scaling via aspect-ratio & max-width/max-height
+    // Logical game resolution (coordinates stay 400×600)
+    const LOGICAL_WIDTH = 400;
+    const LOGICAL_HEIGHT = 600;
+
+    canvas.width = LOGICAL_WIDTH;
+    canvas.height = LOGICAL_HEIGHT;
+
+    // Auto-resize: fill viewport height, maintain 2:3, DPR-aware
+    function resizeCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+
+      // Calculate display size — full viewport height, 2:3 width
+      let displayHeight = window.innerHeight;
+      let displayWidth = Math.round(displayHeight * 2 / 3);
+
+      // Clamp width to viewport (portrait / ultrawide safety)
+      if (displayWidth > window.innerWidth) {
+        displayWidth = window.innerWidth;
+        displayHeight = Math.round(displayWidth * 3 / 2);
+      }
+
+      canvas.style.width = displayWidth + 'px';
+      canvas.style.height = displayHeight + 'px';
+
+      // Scale pixel buffer for Retina sharpness
+      canvas.width = Math.round(LOGICAL_WIDTH * dpr);
+      canvas.height = Math.round(LOGICAL_HEIGHT * dpr);
+
+      // Scale context so all game code still works in 400×600 coords
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    // Resize on load and on window change
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
 
     // --- Constants ---
     const GRAVITY = 0.5;
@@ -70,7 +99,7 @@
     };
 
     function resetGame() {
-      player.y = canvas.height / 2;
+      player.y = LOGICAL_HEIGHT / 2;
       player.velocityY = 0;
       game.score = 0;
       game.obstacles = [];
@@ -135,10 +164,10 @@
 
     function spawnObstacle() {
       const minGapY = 100;
-      const maxGapY = canvas.height - GAP_SIZE - 100;
+      const maxGapY = LOGICAL_HEIGHT - GAP_SIZE - 100;
       const gapY = minGapY + Math.random() * (maxGapY - minGapY);
       game.obstacles.push({
-        x: canvas.width,
+        x: LOGICAL_WIDTH,
         gapY: gapY,
         gapSize: GAP_SIZE,
         width: 60,
@@ -157,8 +186,8 @@
         if (player.y < 0) player.y = 0;
 
         // Ground check — clamp y before game-over to prevent clipping
-        if (player.y + player.height > canvas.height) {
-          player.y = canvas.height - player.height;
+        if (player.y + player.height > LOGICAL_HEIGHT) {
+          player.y = LOGICAL_HEIGHT - player.height;
           game.state = State.GAME_OVER;
         }
 
@@ -184,7 +213,7 @@
 
           // Collision detection
           const topBar = { x: obs.x, y: 0, width: obs.width, height: obs.gapY - obs.gapSize / 2 };
-          const bottomBar = { x: obs.x, y: obs.gapY + obs.gapSize / 2, width: obs.width, height: canvas.height - (obs.gapY + obs.gapSize / 2) };
+          const bottomBar = { x: obs.x, y: obs.gapY + obs.gapSize / 2, width: obs.width, height: LOGICAL_HEIGHT - (obs.gapY + obs.gapSize / 2) };
 
           if (checkCollision(player, topBar) || checkCollision(player, bottomBar)) {
             game.state = State.GAME_OVER;
@@ -202,21 +231,21 @@
     function draw() {
       // Background
       ctx.fillStyle = '#0a0e17';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, LOGICAL_WIDTH, LOGICAL_HEIGHT);
 
       // Grid lines every 40px
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
       ctx.lineWidth = 1;
-      for (let x = 0; x < canvas.width; x += 40) {
+      for (let x = 0; x < LOGICAL_WIDTH; x += 40) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
+        ctx.lineTo(x, LOGICAL_HEIGHT);
         ctx.stroke();
       }
-      for (let y = 0; y < canvas.height; y += 40) {
+      for (let y = 0; y < LOGICAL_HEIGHT; y += 40) {
         ctx.beginPath();
         ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
+        ctx.lineTo(LOGICAL_WIDTH, y);
         ctx.stroke();
       }
 
@@ -235,9 +264,9 @@
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 48px Courier New, monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('NUMERBIRD', canvas.width / 2, canvas.height / 2 - 40);
+      ctx.fillText('NUMERBIRD', LOGICAL_WIDTH / 2, LOGICAL_HEIGHT / 2 - 40);
       ctx.font = '18px Courier New, monospace';
-      ctx.fillText('Press SPACE or Tap to Start', canvas.width / 2, canvas.height / 2 + 20);
+      ctx.fillText('Press SPACE or Tap to Start', LOGICAL_WIDTH / 2, LOGICAL_HEIGHT / 2 + 20);
     }
 
     function drawGame() {
@@ -245,7 +274,7 @@
       for (const obs of game.obstacles) {
         const topHeight = obs.gapY - obs.gapSize / 2;
         const bottomY = obs.gapY + obs.gapSize / 2;
-        const bottomHeight = canvas.height - bottomY;
+        const bottomHeight = LOGICAL_HEIGHT - bottomY;
 
         // Bar border highlight
         ctx.fillStyle = '#00e6b5';
@@ -304,13 +333,13 @@
     function drawGameOver() {
       // Semi-transparent overlay
       ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, LOGICAL_WIDTH, LOGICAL_HEIGHT);
 
       // Score panel
       const panelW = 320;
       const panelH = 200;
-      const panelX = (canvas.width - panelW) / 2;
-      const panelY = (canvas.height - panelH) / 2 - 30;
+      const panelX = (LOGICAL_WIDTH - panelW) / 2;
+      const panelY = (LOGICAL_HEIGHT - panelH) / 2 - 30;
 
       // Panel background
       ctx.fillStyle = 'rgba(10, 14, 23, 0.9)';
@@ -323,17 +352,17 @@
       ctx.fillStyle = '#ff6b6b';
       ctx.font = 'bold 36px Courier New, monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('GAME OVER', canvas.width / 2, panelY + 60);
+      ctx.fillText('GAME OVER', LOGICAL_WIDTH / 2, panelY + 60);
 
       // Score
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 24px Courier New, monospace';
-      ctx.fillText('Score: ' + game.score, canvas.width / 2, panelY + 110);
+      ctx.fillText('Score: ' + game.score, LOGICAL_WIDTH / 2, panelY + 110);
 
       // Restart prompt
       ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
       ctx.font = '16px Courier New, monospace';
-      ctx.fillText('Press SPACE or Tap to Restart', canvas.width / 2, panelY + 160);
+      ctx.fillText('Press SPACE or Tap to Restart', LOGICAL_WIDTH / 2, panelY + 160);
     }
 
     // --- Game Loop ---
