@@ -68,6 +68,85 @@
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
+    // --- Sound Effects (Web Audio API chiptune) ---
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx) audioCtx = new AudioCtx();
+      // Resume if suspended (browsers require user gesture)
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    // Helper: play a single oscillator tone
+    function playTone(freq, type, duration, slide, vol) {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      if (slide) osc.frequency.linearRampToValueAtTime(slide, audioCtx.currentTime + duration);
+      gain.gain.setValueAtTime(vol || 0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    }
+
+    // Helper: white noise burst
+    function playNoise(duration, vol) {
+      if (!audioCtx) return;
+      const bufferSize = audioCtx.sampleRate * duration;
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+      const source = audioCtx.createBufferSource();
+      source.buffer = buffer;
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(vol || 0.08, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+      source.connect(gain);
+      gain.connect(audioCtx.destination);
+      source.start();
+    }
+
+    // --- Sound FX (A2 — Pepe Meme-Aware Chiptune) ---
+
+    // 🐸 D1 — Boing: descending spring then bounce-back
+    function sfxRibbit() {
+      initAudio();
+      // Descending 600→100Hz (spring stretch)
+      playTone(600, 'sine', 0.06, 100, 0.06);
+      // Bounce back 100→400Hz (spring recoil)
+      setTimeout(() => playTone(100, 'sine', 0.06, 400, 0.04), 55);
+    }
+
+    // 📈 G2 — Triple Blip: three rising square beeps
+    function sfxDing() {
+      initAudio();
+      playTone(400, 'square', 0.05, null, 0.12);
+      setTimeout(() => playTone(600, 'square', 0.05, null, 0.12), 50);
+      setTimeout(() => playTone(800, 'square', 0.06, null, 0.14), 100);
+    }
+
+    // 💥 Sad trombone death: descending sawtooth
+    function sfxDeath() {
+      initAudio();
+      // Descending from 600Hz → 100Hz over 500ms
+      playTone(600, 'sawtooth', 0.5, 100, 0.12);
+      // Low rumble on top
+      setTimeout(() => playTone(80, 'square', 0.3, 40, 0.06), 50);
+    }
+
+    // 🎮 Start arpeggio: C-E-G chiptune style
+    function sfxStart() {
+      initAudio();
+      playTone(523, 'square', 0.1, null, 0.10);  // C5
+      setTimeout(() => playTone(659, 'square', 0.1, null, 0.10), 80);  // E5
+      setTimeout(() => playTone(784, 'square', 0.15, null, 0.10), 160); // G5
+    }
+
     // --- Constants ---
     const GRAVITY = 0.5;
     const JUMP_VELOCITY = -8;
@@ -90,6 +169,9 @@
       spawnInterval: SPAWN_INTERVAL_MIN,
       lastTime: 0,
       deathTimer: 0,
+      scorePopTimer: 0,
+      rainbowHue: 0,
+      ripples: [],
       bgOffset: 0,
       particles: [],
     };
@@ -114,6 +196,9 @@
       game.deathTimer = 0;
       game.bgOffset = 0;
       game.particles = [];
+      game.scorePopTimer = 0;
+      game.rainbowHue = 0;
+      game.ripples = [];
       game.streaks = [];
       player.tiltAngle = 0;
     }
@@ -145,10 +230,12 @@
     // --- Input ---
     function handleJump() {
       if (game.state === State.MENU) {
+        sfxStart();
         game.state = State.PLAYING;
         resetGame();
         player.velocityY = JUMP_VELOCITY;
       } else if (game.state === State.PLAYING) {
+        sfxRibbit();
         player.velocityY = JUMP_VELOCITY;
       } else if (game.state === State.GAME_OVER) {
         game.state = State.MENU;
@@ -182,7 +269,7 @@
     }
 
     function spawnObstacle() {
-      const MIN_BAR_HEIGHT = Math.round(LOGICAL_HEIGHT * 0.05); // 30px min on each bar
+      const MIN_BAR_HEIGHT = Math.round(LOGICAL_HEIGHT * 0.13); // 80px min — keeps HUD area clear
       const minGapY = MIN_BAR_HEIGHT + GAP_SIZE / 2;
       const maxGapY = LOGICAL_HEIGHT - MIN_BAR_HEIGHT - GAP_SIZE / 2;
       const gapY = minGapY + Math.random() * (maxGapY - minGapY);
@@ -208,6 +295,7 @@
         // Ground check — clamp y before game-over to prevent clipping
         if (player.y + player.height > LOGICAL_HEIGHT) {
           player.y = LOGICAL_HEIGHT - player.height;
+          sfxDeath();
           game.state = State.GAME_OVER;
         }
 
@@ -232,6 +320,9 @@
           if (!obs.scored && obs.x + obs.width < player.x) {
             obs.scored = true;
             game.score++;
+            game.scorePopTimer = 500;
+            game.rainbowHue = Math.random() * 360;
+            sfxDing();
           }
 
           // Collision detection
@@ -239,6 +330,7 @@
           const bottomBar = { x: obs.x, y: obs.gapY + obs.gapSize / 2, width: obs.width, height: LOGICAL_HEIGHT - (obs.gapY + obs.gapSize / 2) };
 
           if (checkCollision(player, topBar) || checkCollision(player, bottomBar)) {
+            sfxDeath();
             game.state = State.GAME_OVER;
           }
 
@@ -252,10 +344,10 @@
         // Spawn 2 particles per frame behind the rocket nozzle
         for (let i = 0; i < 2; i++) {
           game.particles.push({
-            x: player.x - 12 + Math.random() * 6,
-            y: player.y + 68 + Math.random() * 8,
+            x: player.x - 1 + Math.random() * 8,
+            y: player.y + 71 + Math.random() * 10,
             life: 1.0,
-            size: 4 + Math.random() * 1,
+            size: 5 + Math.random() * 3,
             vx: -(1.5 + Math.random() * 1.5),
             vy: -(0.5 + Math.random() * 0.5) + Math.random() * 1.0,
           });
@@ -292,6 +384,12 @@
       if (game.state === State.GAME_OVER) {
         game.deathTimer += dt * 16.667;
       }
+
+      // Decrement score pop timer
+      if (game.scorePopTimer > 0) {
+        game.scorePopTimer -= dt * 16.667;
+        if (game.scorePopTimer < 0) game.scorePopTimer = 0;
+      }
     }
 
     // --- Draw ---
@@ -313,7 +411,7 @@
         const bgH = LOGICAL_HEIGHT;
         const bgX = -(game.bgOffset % bgW);
         ctx.drawImage(bgImage, 0, 0, bgNaturalW, bgNaturalH, Math.round(bgX), 0, Math.round(bgW), bgH);
-        ctx.drawImage(bgImage, 0, 0, bgNaturalW, bgNaturalH, Math.round(bgX + bgW), 0, Math.round(bgW), bgH);
+        ctx.drawImage(bgImage, 0, 0, bgNaturalW, bgNaturalH, Math.round(bgX + bgW) - 1, 0, Math.round(bgW) + 2, bgH);
       }
 
       if (game.state === State.MENU) {
@@ -342,18 +440,23 @@
 
     function drawMenu() {
       if (game.score > bestScore) bestScore = game.score;
+      ctx.textAlign = 'center';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#000000';
+
       if (bestScore > 0) {
         ctx.font = 'bold 18px Courier New, monospace';
+        ctx.strokeText('ATH: 1 NMR ≈ $' + bestScore, LOGICAL_WIDTH / 2, LOGICAL_HEIGHT / 2 - 80);
         ctx.fillStyle = '#00d4aa';
-        ctx.textAlign = 'center';
         ctx.fillText('ATH: 1 NMR ≈ $' + bestScore, LOGICAL_WIDTH / 2, LOGICAL_HEIGHT / 2 - 80);
       }
-      ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 48px Courier New, monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText('NUMERBIRD', LOGICAL_WIDTH / 2, LOGICAL_HEIGHT / 2 - 30);
+      ctx.strokeText('NUMERBIRD', LOGICAL_WIDTH / 2, LOGICAL_HEIGHT / 2 - 30);
       ctx.fillStyle = '#ffffff';
+      ctx.fillText('NUMERBIRD', LOGICAL_WIDTH / 2, LOGICAL_HEIGHT / 2 - 30);
       ctx.font = '18px Courier New, monospace';
+      ctx.strokeText('Press SPACE or Tap to Start', LOGICAL_WIDTH / 2, LOGICAL_HEIGHT / 2 + 30);
+      ctx.fillStyle = '#ffffff';
       ctx.fillText('Press SPACE or Tap to Start', LOGICAL_WIDTH / 2, LOGICAL_HEIGHT / 2 + 30);
     }
 
@@ -404,11 +507,17 @@
         ctx.stroke();
       }
 
-      // --- Score ---
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 32px Courier New, monospace';
-      ctx.textAlign = 'left';
-      ctx.fillText('1 NMR ≈ $' + game.score, 20, 50);
+      // --- Ripple rings (score effect) ---
+      for (const r of game.ripples) {
+        const progress = 1 - r.timer / r.duration;
+        ctx.beginPath();
+        ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(0, 212, 170, ${0.5 * (1 - progress)})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      // (Score drawn in HUD strip below)
 
       // --- Exhaust smoke particles (radial-gradient, behind player) ---
       for (const p of game.particles) {
@@ -480,6 +589,34 @@
         ctx.fillRect(-player.width / 2, -player.height / 2, player.width, player.height);
         ctx.restore();
       }
+
+      // --- Score with rainbow glow + black outline ---
+      const scoreText = '1 NMR ≈ $' + game.score;
+      ctx.font = 'bold 32px Courier New, monospace';
+      ctx.textAlign = 'left';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#000000';
+
+      // Rainbow glow on score pop
+      if (game.scorePopTimer > 0) {
+        const progress = game.scorePopTimer / 500;
+        const blur = Math.round(40 * progress);
+        const hue = game.rainbowHue;
+        ctx.save();
+        ctx.shadowColor = `hsl(${hue}, 100%, 60%)`;
+        ctx.shadowBlur = blur;
+        ctx.fillStyle = `hsl(${hue}, 100%, 60%)`;
+        ctx.fillText(scoreText, 20, 50);
+        ctx.shadowBlur = 0;
+        ctx.strokeText(scoreText, 20, 50);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(scoreText, 20, 50);
+        ctx.restore();
+      } else {
+        ctx.strokeText(scoreText, 20, 50);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(scoreText, 20, 50);
+      }
     }
 
     function drawGameOver() {
@@ -501,19 +638,24 @@
       ctx.strokeRect(panelX, panelY, panelW, panelH);
 
       // Game Over text
-      ctx.fillStyle = '#ff6b6b';
       ctx.font = 'bold 36px Courier New, monospace';
       ctx.textAlign = 'center';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#000000';
+      ctx.strokeText('GAME OVER', LOGICAL_WIDTH / 2, panelY + 60);
+      ctx.fillStyle = '#ff6b6b';
       ctx.fillText('GAME OVER', LOGICAL_WIDTH / 2, panelY + 60);
 
       // Score
-      ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 24px Courier New, monospace';
+      ctx.strokeText('1 NMR ≈ $' + game.score, LOGICAL_WIDTH / 2, panelY + 110);
+      ctx.fillStyle = '#ffffff';
       ctx.fillText('1 NMR ≈ $' + game.score, LOGICAL_WIDTH / 2, panelY + 110);
 
       // Restart prompt
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
       ctx.font = '16px Courier New, monospace';
+      ctx.strokeText('Press SPACE or Tap to Restart', LOGICAL_WIDTH / 2, panelY + 160);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
       ctx.fillText('Press SPACE or Tap to Restart', LOGICAL_WIDTH / 2, panelY + 160);
     }
 
