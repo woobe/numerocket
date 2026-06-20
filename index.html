@@ -445,6 +445,13 @@
       ctx.lineWidth = 3;
       ctx.strokeStyle = '#000000';
 
+      // Player sprite above title
+      if (playerImageLoaded) {
+        const spriteSize = 120;
+        const spriteY = LOGICAL_HEIGHT / 2 - 150;
+        ctx.drawImage(playerImage, LOGICAL_WIDTH / 2 - spriteSize / 2, spriteY, spriteSize, spriteSize);
+      }
+
       if (bestScore > 0) {
         ctx.font = 'bold 18px Courier New, monospace';
         ctx.strokeText('ATH: 1 NMR ≈ $' + bestScore, LOGICAL_WIDTH / 2, LOGICAL_HEIGHT / 2 - 80);
@@ -459,6 +466,14 @@
       ctx.strokeText('Press SPACE or Tap to Start', LOGICAL_WIDTH / 2, LOGICAL_HEIGHT / 2 + 30);
       ctx.fillStyle = '#ffffff';
       ctx.fillText('Press SPACE or Tap to Start', LOGICAL_WIDTH / 2, LOGICAL_HEIGHT / 2 + 30);
+      // Version footer
+      ctx.font = '14px Courier New, monospace';
+      ctx.textAlign = 'center';
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#000000';
+      ctx.strokeText('Prototype v0.5', LOGICAL_WIDTH / 2, LOGICAL_HEIGHT - 15);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.60)';
+      ctx.fillText('Prototype v0.5', LOGICAL_WIDTH / 2, LOGICAL_HEIGHT - 15);
     }
 
     function drawGame() {

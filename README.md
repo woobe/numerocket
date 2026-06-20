@@ -66,11 +66,13 @@ Then in your repo **Settings → Pages → Build and deployment → Source: Depl
 
 ## Changelog
 
-### v0.5 — Seamless Background + Rocket Favicon (current)
+### v0.5 — Start Screen Polish + Rocket Favicon (current)
 
 - 🏙️ New seam-free background image — seamless tiling, no visible wrap seam
 - 🔧 Background tile overlap reduced from 6px → 2px (cleaner with new image)
 - 🚀 Browser tab icon changed to rocket emoji (inline SVG favicon)
+- 🐊 Player alligator sprite displayed on start screen above title
+- 🏷️ "Prototype v0.5" version footer at bottom of menu
 - 📝 Customization table now documents `OVERLAP` constant
 
 ### v0.4 — Candlestick Gradients + Easier Collision
