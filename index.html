@@ -302,11 +302,11 @@
 
       // Parallax background image (scrolls at 30% of obstacle speed)
       if (bgImageLoaded) {
-        const bgW = Math.round(bgNaturalW * (LOGICAL_HEIGHT / bgNaturalH));
+        const bgW = bgNaturalW * (LOGICAL_HEIGHT / bgNaturalH);
         const bgH = LOGICAL_HEIGHT;
         const bgX = -(game.bgOffset % bgW);
-        ctx.drawImage(bgImage, 0, 0, bgNaturalW, bgNaturalH, bgX, 0, bgW, bgH);
-        ctx.drawImage(bgImage, 0, 0, bgNaturalW, bgNaturalH, bgX + bgW, 0, bgW, bgH);
+        ctx.drawImage(bgImage, 0, 0, bgNaturalW, bgNaturalH, Math.round(bgX), 0, Math.round(bgW), bgH);
+        ctx.drawImage(bgImage, 0, 0, bgNaturalW, bgNaturalH, Math.round(bgX + bgW), 0, Math.round(bgW), bgH);
       }
 
       if (game.state === State.MENU) {
