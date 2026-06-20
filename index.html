@@ -76,8 +76,8 @@
     const SPAWN_INTERVAL_MIN = 90;
     const SPAWN_INTERVAL_MAX = 120;
     const PLAYER_X = 80;
-    const PLAYER_WIDTH = 80;
-    const PLAYER_HEIGHT = 80;
+    const PLAYER_WIDTH = 100;
+    const PLAYER_HEIGHT = 100;
 
     // --- Game state ---
     const State = { MENU: 0, PLAYING: 1, GAME_OVER: 2 };
@@ -101,6 +101,7 @@
       width: PLAYER_WIDTH,
       height: PLAYER_HEIGHT,
       velocityY: 0,
+      tiltAngle: 0,
     };
 
     function resetGame() {
@@ -113,6 +114,8 @@
       game.deathTimer = 0;
       game.bgOffset = 0;
       game.particles = [];
+      game.streaks = [];
+      player.tiltAngle = 0;
     }
     resetGame();
 
@@ -171,7 +174,7 @@
     });
 
     function checkCollision(a, b) {
-      const padding = 2; // fairness padding
+      const padding = 8; // fairness padding — makes game easier
       return a.x < b.x + b.width - padding &&
              a.x + a.width > b.x + padding &&
              a.y < b.y + b.height - padding &&
@@ -279,6 +282,10 @@
             game.particles.splice(i, 1);
           }
         }
+
+        // Smooth tilt: lerp toward velocity-based target
+        const targetTilt = player.velocityY * 0.025;
+        player.tiltAngle += (targetTilt - player.tiltAngle) * 0.15;
       }
 
       // Track death timer for shake/flash effect
@@ -351,46 +358,49 @@
     }
 
     function drawGame() {
-      // --- Obstacles (stock-chart bar style) ---
+      // --- Obstacles (candlestick-chart style) ---
       for (const obs of game.obstacles) {
         const topHeight = obs.gapY - obs.gapSize / 2;
         const bottomY = obs.gapY + obs.gapSize / 2;
         const bottomHeight = LOGICAL_HEIGHT - bottomY;
 
-        // Bar border highlight
-        ctx.fillStyle = '#00e6b5';
-        ctx.shadowColor = '#00d4aa';
-        ctx.shadowBlur = 6;
+        const wickColour = '#000000';
+        const wickLen = 10;
+        const borderW = 2;
 
-        // Top bar
-        ctx.fillRect(obs.x, 0, obs.width, topHeight);
-        // Bottom bar
-        ctx.fillRect(obs.x, bottomY, obs.width, bottomHeight);
-
-        // Inner fill (darker)
-        ctx.fillStyle = '#00d4aa';
-        ctx.shadowBlur = 0;
-        ctx.fillRect(obs.x + 3, 3, obs.width - 6, topHeight - 3);
-        ctx.fillRect(obs.x + 3, bottomY + 3, obs.width - 6, bottomHeight - 3);
-
-        // Thin highlight line
-        ctx.strokeStyle = '#00ffc8';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(obs.x, 0, obs.width, topHeight);
-        ctx.strokeRect(obs.x, bottomY, obs.width, bottomHeight);
-
-        // Numerai-style candle wick lines (thin vertical like stock wicks)
-        ctx.strokeStyle = 'rgba(0, 255, 200, 0.3)';
-        ctx.lineWidth = 1;
-        // Top wick
+        // --- Top bar ---
+        const topBodyH = topHeight - wickLen;
+        // Vertical gradient: dark green top → light green bottom (lit toward gap)
+        const topGrad = ctx.createLinearGradient(0, 0, 0, topBodyH);
+        topGrad.addColorStop(0, '#009624');
+        topGrad.addColorStop(1, '#00e676');
+        // Body fill + black border
+        ctx.fillStyle = topGrad;
+        ctx.strokeStyle = wickColour;
+        ctx.lineWidth = borderW;
+        ctx.fillRect(obs.x, 0, obs.width, topBodyH);
+        ctx.strokeRect(obs.x, 0, obs.width, topBodyH);
+        // Wick extending downward (into gap)
         ctx.beginPath();
-        ctx.moveTo(obs.x + obs.width / 2, topHeight);
-        ctx.lineTo(obs.x + obs.width / 2, topHeight + 8);
+        ctx.moveTo(obs.x + obs.width / 2, topBodyH);
+        ctx.lineTo(obs.x + obs.width / 2, topHeight);
         ctx.stroke();
-        // Bottom wick
+
+        // --- Bottom bar ---
+        const bottomBodyY = bottomY + wickLen;
+        const bottomBodyH = bottomHeight - wickLen;
+        // Vertical gradient: light green top → dark green bottom
+        const bottomGrad = ctx.createLinearGradient(0, bottomBodyY, 0, bottomBodyY + bottomBodyH);
+        bottomGrad.addColorStop(0, '#00e676');
+        bottomGrad.addColorStop(1, '#009624');
+        // Body fill + black border
+        ctx.fillStyle = bottomGrad;
+        ctx.fillRect(obs.x, bottomBodyY, obs.width, bottomBodyH);
+        ctx.strokeRect(obs.x, bottomBodyY, obs.width, bottomBodyH);
+        // Wick extending upward (into gap)
         ctx.beginPath();
         ctx.moveTo(obs.x + obs.width / 2, bottomY);
-        ctx.lineTo(obs.x + obs.width / 2, bottomY - 8);
+        ctx.lineTo(obs.x + obs.width / 2, bottomBodyY);
         ctx.stroke();
       }
 
@@ -448,14 +458,27 @@
       }
       ctx.globalAlpha = 1.0;
 
-      // Player — sprite image (with fallback rectangle)
+      // Player — sprite image with smoothed velocity-based tilt (with fallback rectangle)
+      const tiltAngle = player.tiltAngle;
       if (playerImageLoaded) {
-        // Draw 120x120 visual centered on the 80x80 collision box (offset -20,-20)
-        ctx.drawImage(playerImage, player.x - 20, player.y - 20, 120, 120);
+        ctx.save();
+        // Rotate around visual center (120x120 sprite centered on 100x100 collision)
+        const cx = player.x + 50;
+        const cy = player.y + 50;
+        ctx.translate(cx, cy);
+        ctx.rotate(tiltAngle);
+        ctx.drawImage(playerImage, -60, -60, 120, 120);
+        ctx.restore();
       } else {
-        // Fallback: simple rectangle while image loads
+        // Fallback: rotate collision rectangle around its center
+        ctx.save();
+        const cx2 = player.x + player.width / 2;
+        const cy2 = player.y + player.height / 2;
+        ctx.translate(cx2, cy2);
+        ctx.rotate(tiltAngle);
         ctx.fillStyle = '#ff6b6b';
-        ctx.fillRect(player.x, player.y, player.width, player.height);
+        ctx.fillRect(-player.width / 2, -player.height / 2, player.width, player.height);
+        ctx.restore();
       }
     }
 

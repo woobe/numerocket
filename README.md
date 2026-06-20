@@ -20,9 +20,9 @@ Open `index.html` in any modern browser.
 ## Visual Theme
 
 - **Background:** Parallax-scrolling Tokyo cityscape at night with stock chart overlay (`background.jpg`, 1200×600)
-- **Obstacles:** Stock-market chart bars in teal (`#00d4aa`) with glowing borders and candle wicks
+- **Obstacles:** Candlestick-chart bars with two-tone green gradient (`#00e676` → `#009624`), mirrored direction so light side faces the gap, black border + wicks
 - **Player:** Pixel-art alligator in hoodie with rocket launcher (`player.png`, 120×120 visual, 80×80 collision hitbox)
-- **Effects:** CRT scanline overlay, grey soft-glow edge on player, gentle screen shake on death
+- **Effects:** Sci-fi exhaust smoke trail (radial-gradient particles), CRT scanline overlay, gentle screen shake on death
 - **Typography:** Courier New monospace — terminal/data-science aesthetic
 - **Display:** Auto-resizing canvas fills viewport height at 2:3 ratio, DPR-aware for Retina sharpness
 
@@ -36,6 +36,7 @@ All gameplay constants are at the top of the `<script>` section in `index.html`:
 | `JUMP_VELOCITY` | -8 | Jump strength (negative = upward) |
 | `SPEED` | 3 | Obstacle scroll speed |
 | `GAP_SIZE` | 270 | Vertical gap between bars (smaller = harder) |
+| `PADDING` (in `checkCollision`) | 8 | Collision fairness — higher = easier to dodge |
 | `SPAWN_INTERVAL_MIN` | 90 | Minimum frames between obstacle spawns |
 | `SPAWN_INTERVAL_MAX` | 120 | Maximum frames between obstacle spawns |
 
@@ -46,7 +47,7 @@ Assets live in the `assets/` folder. Edit the source paths at the top of the gam
 ```javascript
 const PLAYER_IMAGE_SRC = 'assets/player.png';      // 120×120 RGBA PNG
 const BACKGROUND_IMAGE_SRC = 'assets/background.jpg'; // wide panoramic, auto-scaled
-const OBSTACLE_IMAGE_SRC = null;                     // set to replace teal bars
+const OBSTACLE_IMAGE_SRC = null;                     // set to replace candlestick bars
 ```
 
 - **Player:** Auto-scaled from source dimensions, collision is always 80×80 centered in visual
@@ -56,7 +57,7 @@ const OBSTACLE_IMAGE_SRC = null;                     // set to replace teal bars
 
 ```bash
 git add .
-git commit -m "v0.2"
+git commit -m "v0.4"
 git push origin main
 ```
 
@@ -64,7 +65,13 @@ Then in your repo **Settings → Pages → Build and deployment → Source: Depl
 
 ## Changelog
 
-### v0.3 — Sci-fi Exhaust Smoke Trail (current)
+### v0.4 — Candlestick Gradients + Easier Collision (current)
+
+- 🟢 Green candlestick gradient: two-tone vertical gradient (`#00e676` → `#009624`)
+- 🔄 Mirrored gradient — top bars light near gap, bottom bars light near gap
+- 🎯 Collision padding increased (2 → 8) for noticeably easier gameplay
+
+### v0.3 — Sci-fi Exhaust Smoke Trail
 
 - ✨ Radial-gradient particle system replaces grey squares
 - 🔥 Colour curve matched to sprite muzzle flash: `#FF8800` → `#FF5500` → dark/light gray → transparent
