@@ -74,8 +74,10 @@
     let audioCtx = null;
 
     function initAudio() {
-      if (!audioCtx) audioCtx = new AudioCtx();
-      // Resume if suspended (browsers require user gesture)
+      if (!audioCtx) {
+        try { audioCtx = new AudioCtx(); }
+        catch (e) { console.warn('AudioContext creation failed:', e); return; }
+      }
       if (audioCtx.state === 'suspended') audioCtx.resume();
     }
 
@@ -209,7 +211,6 @@
       deathTimer: 0,
       scorePopTimer: 0,
       rainbowHue: 0,
-      ripples: [],
       bgOffset: 0,
       particles: [],
       rings: [],
@@ -240,11 +241,11 @@
       game.deathTimer = 0;
       game.bgOffset = 0;
       game.rainbowHue = 0;
-      game.ripples = [];
+
       game.rings = [];
       game.screenFlash = 0;
       game.glowIntensity = 0;
-      game.streaks = [];
+
       game.lastGapY = null;
       player.tiltAngle = 0;
     }
@@ -258,6 +259,7 @@
     const PLAYER_IMAGE_SRC = 'assets/player.png';
     const playerImage = new Image();
     let playerImageLoaded = false;
+    playerImage.onerror = () => console.warn('Failed to load player image:', PLAYER_IMAGE_SRC);
     playerImage.onload = () => { playerImageLoaded = true; };
     playerImage.src = PLAYER_IMAGE_SRC;
     // --- Background asset ---
@@ -271,6 +273,7 @@
       bgNaturalW = bgImage.naturalWidth;
       bgNaturalH = bgImage.naturalHeight;
     };
+    bgImage.onerror = () => console.warn('Failed to load background image:', BACKGROUND_IMAGE_SRC);
     bgImage.src = BACKGROUND_IMAGE_SRC;
 
     // --- Input ---
@@ -290,7 +293,7 @@
     }
 
     document.addEventListener('keydown', (e) => {
-      if (e.code === 'Space') {
+      if (e.code === 'Space' || e.code === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
         e.preventDefault();
         handleJump();
       }
@@ -299,12 +302,14 @@
     canvas.addEventListener('touchstart', (e) => {
       e.preventDefault();
       handleJump();
-    });
+    }, { passive: false });
 
     canvas.addEventListener('click', (e) => {
       e.preventDefault();
       handleJump();
     });
+
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
     function checkCollision(a, b) {
       const padding = 8; // fairness padding — makes game easier
@@ -520,6 +525,9 @@
         game.glowIntensity -= 0.6 * dt;
         if (game.glowIntensity < 8) game.glowIntensity = 8;
       }
+
+      // Cycle rainbow hue for score-pop glow
+      game.rainbowHue = (game.rainbowHue + 2) % 360;
     }
 
     // --- Draw ---
@@ -616,7 +624,7 @@
       ctx.textAlign = 'center';
       ctx.lineWidth = 2;
       ctx.strokeStyle = '#000000';
-      ctx.strokeText('Prototype v0.5', LOGICAL_WIDTH / 2, LOGICAL_HEIGHT - 15);
+      ctx.strokeText('Prototype v0.6', LOGICAL_WIDTH / 2, LOGICAL_HEIGHT - 15);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.60)';
       ctx.fillText('Prototype v0.6', LOGICAL_WIDTH / 2, LOGICAL_HEIGHT - 15);
     }
@@ -665,16 +673,6 @@
         ctx.beginPath();
         ctx.moveTo(obs.x + obs.width / 2, bottomY);
         ctx.lineTo(obs.x + obs.width / 2, bottomBodyY);
-        ctx.stroke();
-      }
-
-      // --- Ripple rings (score effect) ---
-      for (const r of game.ripples) {
-        const progress = 1 - r.timer / r.duration;
-        ctx.beginPath();
-        ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(0, 212, 170, ${0.5 * (1 - progress)})`;
-        ctx.lineWidth = 2;
         ctx.stroke();
       }
 

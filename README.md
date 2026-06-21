@@ -75,6 +75,16 @@ Then in your repo **Settings → Pages → Build and deployment → Source: Depl
 
 ### v0.6 — Game Over Panel Refinement + Menu Refresh + Visual Overhaul (current)
 
+**Bugfixes (Phase 1):**
+- 🐛 **Version footer ghost fixed** — stroked "v0.5" text removed, now renders clean "v0.6"
+- 🐛 **Score-pop rainbow glow fixed** — `rainbowHue` now cycles through colours instead of staying red
+- 🐛 **Dead code removed** — unused `game.streaks` and orphaned `game.ripples` rendering cleaned out
+- 🐛 **Alternative jump keys added** — Arrow Up and `W` now work alongside Space
+- 🐛 **Right-click context menu blocked** on canvas
+- 🐛 **Touch input hardened** — `{ passive: false }` on touchstart prevents Chrome console warning
+- 🐛 **Audio creation hardened** — `new AudioContext()` wrapped in try/catch
+- 🐛 **Image loading errors logged** — `onerror` handlers added for player and background images
+
 - 🎯 **TIER→Score tight gap** — 10px spacing groups TIER and Score together in the Game Over panel
 - 🔲 **Heavier obstacle outlines** — candlestick black border increased 2→3px for better visibility
 - 🏆 **Menu: "Best Score" label** — ATH on menu screen renamed to "Best Score: 1 NMR ≈ $" and moved to top of screen (30px from top edge)
