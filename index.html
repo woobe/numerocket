@@ -339,7 +339,7 @@
     })();
 
     // --- Tier symbols for colour-blind accessibility ---
-    const TIER_SYMBOLS = ['\u25CF', '\u25A0', '\u25B2', '\u2605', '\u25C6', '\u2606'];
+    const TIER_SYMBOLS = ['-', '\u25CF', '\u25B2', '\u25A0', '\u25C6', '\u2605'];
 
     // --- Game state ---
     const State = { MENU: 0, PLAYING: 1, GAME_OVER: 2 };
@@ -365,6 +365,8 @@
       redStreakLength: 0,
       redDriftDirection: 0,
       obstacleCountInTier: 0,
+      skinsInTier: 0,
+      greenStartCount: 2, // first 2 obstacles always green, no skin
     };
 
     // --- Player ---
@@ -399,15 +401,18 @@
       game.redStreakLength = 3;
       game.redDriftDirection = 0;
       game.obstacleCountInTier = 0;
+      game.skinsInTier = 0;
 
       game.lastGapY = null;
       player.tiltAngle = 0;
     }
     resetGame();
 
-    // --- Obstacle asset placeholder ---
-    // TODO: assign image URLs and wire into drawGame() to replace shape rendering
-    const OBSTACLE_IMAGE_SRC = null;
+    // --- Obstacle skin assets ---
+    const obstacleTopImg = new Image();
+    obstacleTopImg.src = 'assets/column_rc_top.png';
+    const obstacleBotImg = new Image();
+    obstacleBotImg.src = 'assets/column_rc_bot.png';
     // --- Player asset ---
     // Image is loaded below and wired into drawGame()
     const PLAYER_IMAGE_SRC = 'assets/player.png';
@@ -478,7 +483,7 @@
       const isRedStreak = game.redStreakStart !== -1 &&
         game.obstacleCountInTier >= game.redStreakStart &&
         game.obstacleCountInTier < game.redStreakStart + game.redStreakLength;
-      const MIN_BAR_HEIGHT = Math.round(LOGICAL_HEIGHT * 0.13); // 80px min — keeps HUD area clear
+      const MIN_BAR_HEIGHT = 90; // min bar height — keeps HUD area clear
       const gapSize = getGapSize();
       const minGapY = MIN_BAR_HEIGHT + gapSize / 2;
       const maxGapY = LOGICAL_HEIGHT - MIN_BAR_HEIGHT - gapSize / 2;
@@ -510,6 +515,21 @@
         // (no gapY shift)
       }
 
+      // Skin frequency: at least 1 per tier, max 2 (non-red only)
+      let hasSkin = false;
+      if (game.greenStartCount > 0) {
+        game.greenStartCount--;
+      } else if (!isRedStreak) {
+        if (game.skinsInTier >= 2) {
+          hasSkin = false;
+        } else if (game.skinsInTier === 0 && game.obstacleCountInTier >= 5) {
+          hasSkin = true; // force first by mid-tier
+        } else {
+          hasSkin = Math.random() < 0.15;
+        }
+        if (hasSkin) game.skinsInTier++;
+      }
+
       game.obstacles.push({
         x: LOGICAL_WIDTH,
         gapY: gapY,
@@ -517,6 +537,7 @@
         width: 60,
         scored: false,
         isRed: isRedStreak,
+        skin: hasSkin,
       });
     }
 
@@ -616,6 +637,7 @@
               game.redStreakStart = 2 + Math.floor(Math.random() * 4);
               game.redStreakLength = 3;
               game.obstacleCountInTier = 0;
+              game.skinsInTier = 0;
             }
             // Regular score sound
             sfxDing();
@@ -853,9 +875,9 @@
       ctx.textAlign = 'center';
       ctx.lineWidth = 2;
       ctx.strokeStyle = '#000000';
-      ctx.strokeText('Prototype v0.6.3', LOGICAL_WIDTH / 2, LOGICAL_HEIGHT - 15);
+      ctx.strokeText('Prototype v0.6.4', LOGICAL_WIDTH / 2, LOGICAL_HEIGHT - 15);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.60)';
-      ctx.fillText('Prototype v0.6.3', LOGICAL_WIDTH / 2, LOGICAL_HEIGHT - 15);
+      ctx.fillText('Prototype v0.6.4', LOGICAL_WIDTH / 2, LOGICAL_HEIGHT - 15);
     }
 
     function drawGame() {
@@ -871,48 +893,92 @@
 
         // --- Top bar ---
         const topBodyH = topHeight - wickLen;
-        // Vertical gradient: dark green top → light green bottom (lit toward gap), or red gradient for streak
-        const topGrad = ctx.createLinearGradient(0, 0, 0, topBodyH);
-        if (obs.isRed) {
-          topGrad.addColorStop(0, '#b71c1c');
-          topGrad.addColorStop(1, '#f44336');
+        // Body fill (gradient or sprite image)
+        if (!obs.skin) {
+          const topGrad = ctx.createLinearGradient(0, 0, 0, topBodyH);
+          if (obs.isRed) {
+            topGrad.addColorStop(0, '#b71c1c');
+            topGrad.addColorStop(1, '#f44336');
+          } else {
+            topGrad.addColorStop(0, '#009624');
+            topGrad.addColorStop(1, '#00e676');
+          }
+          ctx.fillStyle = topGrad;
+          ctx.fillRect(obs.x, 0, obs.width, topBodyH);
+          // Black border
+          ctx.strokeStyle = wickColour;
+          ctx.lineWidth = borderW;
+          ctx.strokeRect(obs.x, 0, obs.width, topBodyH);
+          // Wick extending downward (into gap)
+          ctx.beginPath();
+          ctx.moveTo(obs.x + obs.width / 2, topBodyH);
+          ctx.lineTo(obs.x + obs.width / 2, topHeight);
+          ctx.stroke();
         } else {
-          topGrad.addColorStop(0, '#009624');
-          topGrad.addColorStop(1, '#00e676');
+          // Sprite at natural size, anchored at gap edge, clipped to bar bounds
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(obs.x, 0, obs.width, topHeight);
+          ctx.clip();
+          // 3px black outline tracing the sprite edge (offset blit)
+          ctx.filter = 'brightness(0)';
+          ctx.drawImage(obstacleTopImg, obs.x - 3, topHeight - 310);
+          ctx.drawImage(obstacleTopImg, obs.x + 3, topHeight - 310);
+          ctx.drawImage(obstacleTopImg, obs.x, topHeight - 313);
+          ctx.drawImage(obstacleTopImg, obs.x, topHeight - 307);
+          ctx.drawImage(obstacleTopImg, obs.x - 2, topHeight - 312);
+          ctx.drawImage(obstacleTopImg, obs.x + 2, topHeight - 312);
+          ctx.drawImage(obstacleTopImg, obs.x - 2, topHeight - 308);
+          ctx.drawImage(obstacleTopImg, obs.x + 2, topHeight - 308);
+          ctx.filter = 'none';
+          ctx.drawImage(obstacleTopImg, obs.x, topHeight - 310);
+          ctx.restore();
         }
-        // Body fill + black border
-        ctx.fillStyle = topGrad;
-        ctx.strokeStyle = wickColour;
-        ctx.lineWidth = borderW;
-        ctx.fillRect(obs.x, 0, obs.width, topBodyH);
-        ctx.strokeRect(obs.x, 0, obs.width, topBodyH);
-        // Wick extending downward (into gap)
-        ctx.beginPath();
-        ctx.moveTo(obs.x + obs.width / 2, topBodyH);
-        ctx.lineTo(obs.x + obs.width / 2, topHeight);
-        ctx.stroke();
 
         // --- Bottom bar ---
         const bottomBodyY = bottomY + wickLen;
         const bottomBodyH = bottomHeight - wickLen;
-        // Vertical gradient: light green top → dark green bottom, or reversed red gradient for streak
-        const bottomGrad = ctx.createLinearGradient(0, bottomBodyY, 0, bottomBodyY + bottomBodyH);
-        if (obs.isRed) {
-          bottomGrad.addColorStop(0, '#f44336');
-          bottomGrad.addColorStop(1, '#b71c1c');
+        // Body fill (gradient or sprite image)
+        if (!obs.skin) {
+          const bottomGrad = ctx.createLinearGradient(0, bottomBodyY, 0, bottomBodyY + bottomBodyH);
+          if (obs.isRed) {
+            bottomGrad.addColorStop(0, '#f44336');
+            bottomGrad.addColorStop(1, '#b71c1c');
+          } else {
+            bottomGrad.addColorStop(0, '#00e676');
+            bottomGrad.addColorStop(1, '#009624');
+          }
+          ctx.fillStyle = bottomGrad;
+          ctx.fillRect(obs.x, bottomBodyY, obs.width, bottomBodyH);
+          // Black border
+          ctx.strokeStyle = wickColour;
+          ctx.lineWidth = borderW;
+          ctx.strokeRect(obs.x, bottomBodyY, obs.width, bottomBodyH);
+          // Wick extending upward (into gap)
+          ctx.beginPath();
+          ctx.moveTo(obs.x + obs.width / 2, bottomY);
+          ctx.lineTo(obs.x + obs.width / 2, bottomBodyY);
+          ctx.stroke();
         } else {
-          bottomGrad.addColorStop(0, '#00e676');
-          bottomGrad.addColorStop(1, '#009624');
+          // Sprite at natural size, anchored at gap edge, clipped to bar bounds
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(obs.x, bottomY, obs.width, LOGICAL_HEIGHT - bottomY);
+          ctx.clip();
+          // 3px black outline tracing the sprite edge (offset blit)
+          ctx.filter = 'brightness(0)';
+          ctx.drawImage(obstacleBotImg, obs.x - 3, bottomY);
+          ctx.drawImage(obstacleBotImg, obs.x + 3, bottomY);
+          ctx.drawImage(obstacleBotImg, obs.x, bottomY - 3);
+          ctx.drawImage(obstacleBotImg, obs.x, bottomY + 3);
+          ctx.drawImage(obstacleBotImg, obs.x - 2, bottomY - 2);
+          ctx.drawImage(obstacleBotImg, obs.x + 2, bottomY - 2);
+          ctx.drawImage(obstacleBotImg, obs.x - 2, bottomY + 2);
+          ctx.drawImage(obstacleBotImg, obs.x + 2, bottomY + 2);
+          ctx.filter = 'none';
+          ctx.drawImage(obstacleBotImg, obs.x, bottomY);
+          ctx.restore();
         }
-        // Body fill + black border
-        ctx.fillStyle = bottomGrad;
-        ctx.fillRect(obs.x, bottomBodyY, obs.width, bottomBodyH);
-        ctx.strokeRect(obs.x, bottomBodyY, obs.width, bottomBodyH);
-        // Wick extending upward (into gap)
-        ctx.beginPath();
-        ctx.moveTo(obs.x + obs.width / 2, bottomY);
-        ctx.lineTo(obs.x + obs.width / 2, bottomBodyY);
-        ctx.stroke();
       }
 
       // --- Shockwave rings (tier-coloured on level up) ---

@@ -73,7 +73,16 @@ Then in your repo **Settings → Pages → Build and deployment → Source: Depl
 
 ## Changelog
 
-### v0.6.3 — Red Streak: 3 red bars per tier (current)
+### v0.6.4 — Obstacle skin swaps + polish (current)
+
+- 🖼️ **Obstacle skin swaps** — ~12% of non-red obstacles render with sprite-based art (`column_rc_top.png` / `column_rc_bot.png`) instead of gradient candlesticks, at natural size clipped to bar bounds
+- 🎨 **3px black outline** — sprite-edge outline via offset blit traces the alpha edge of the column art
+- 🟢 **Green start** — first 2 obstacles always green, no skin, for a smooth opening
+- 📊 **Minimum bar height** — bumped to 90px for better sprite visibility on short bars
+- 🔤 **Tier symbols updated** — Apprentice=-, Contributor=●, Researcher=▲, Expert=■, Master=◆, Grandmaster=★
+- 🏷️ Version footer bumped to v0.6.4
+
+### v0.6.3 — Red Streak: 3 red bars per tier
 
 - 🔴 **Red Streak** — 3 red obstacles appear in every tier at a random position (bars 2-5), with tighter spawn interval (65-85 frames) for a sudden burst of pace
 - 🟢 **Green start** — first 3 obstacles in Apprentice tier are always green for a smooth opening
