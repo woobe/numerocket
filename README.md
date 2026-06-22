@@ -73,7 +73,14 @@ Then in your repo **Settings → Pages → Build and deployment → Source: Depl
 
 ## Changelog
 
-### v0.6.1 — Bugfixes, accessibility, code quality & polish (current)
+### v0.6.2 — Tier-coloured exhaust & glow (current)
+
+- 🔥 **Aggressive smoke tint** — exhaust smoke stages tinted 80% with tier colour, fire core stays orange
+- 🔥 **Dual-radial glow** — every particle gets a warm orange centre + tier-coloured outer rim via pre-rendered glow overlays
+- 🎆 **Tier-coloured additive sparks** — continuous stream of tier-coloured embers from rocket nozzle
+- 🏷️ Version footer bumped to v0.6.2
+
+### v0.6.1 — Bugfixes, accessibility, code quality & polish
 
 **Phase 1 (Bugfixes):**
 - 🐛 **Version footer ghost fixed** — stroked "v0.5" text removed, now renders clean "v0.6.1"
