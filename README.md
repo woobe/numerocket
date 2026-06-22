@@ -73,7 +73,15 @@ Then in your repo **Settings → Pages → Build and deployment → Source: Depl
 
 ## Changelog
 
-### v0.6.5 — Glass shatter death effect (current)
+### v0.6.6 — Dramatic progress bar + glow threshold (current)
+
+- 📊 **Bar glow at 7+ blocks** — tier-coloured shadow glow appears behind the filled bar, intensity doubles at 9 blocks
+- ⬜ **Block 7-8 whitening** — blocks shift from tier colour to bright white in the end zone
+- 🔆 **Block 9 pulse** — final unfilled slot pulses with tier-coloured glow aura + flashing arrow indicator
+- ✨ **Stronger score feedback** — newest block pulse boosted to 50% brightness spike + 3px height bump
+- 🏷️ Version footer bumped to v0.6.6
+
+### v0.6.5 — Glass shatter death effect
 
 - 💥 **Death explosion** — expanding fireball, 3 staggered fire rings, 50 additive sparks, screen flash
 - 🪟 **Glass shatter cracks** — 16 branching radial cracks (80–160px) + 40 dense short cracks + 80px dark hole at impact
