@@ -361,6 +361,10 @@
       sparks: [],
       screenFlash: 0,
       glowIntensity: 0,
+      redStreakStart: -1,
+      redStreakLength: 0,
+      redDriftDirection: 0,
+      obstacleCountInTier: 0,
     };
 
     // --- Player ---
@@ -391,6 +395,10 @@
       game.sparks = [];
       game.screenFlash = 0;
       game.glowIntensity = 0;
+      game.redStreakStart = 4 + Math.floor(Math.random() * 2);  // bars 4-6 in first tier, keeping 1-3 green
+      game.redStreakLength = 3;
+      game.redDriftDirection = 0;
+      game.obstacleCountInTier = 0;
 
       game.lastGapY = null;
       player.tiltAngle = 0;
@@ -466,6 +474,10 @@
     }
 
     function spawnObstacle() {
+      game.obstacleCountInTier++;
+      const isRedStreak = game.redStreakStart !== -1 &&
+        game.obstacleCountInTier >= game.redStreakStart &&
+        game.obstacleCountInTier < game.redStreakStart + game.redStreakLength;
       const MIN_BAR_HEIGHT = Math.round(LOGICAL_HEIGHT * 0.13); // 80px min — keeps HUD area clear
       const gapSize = getGapSize();
       const minGapY = MIN_BAR_HEIGHT + gapSize / 2;
@@ -487,12 +499,24 @@
         }
       }
       game.lastGapY = gapY;
+
+      // Tweak 2: directional gap drift for red bars
+      if (isRedStreak) {
+        const redStreakIdx = game.obstacleCountInTier - game.redStreakStart;
+        if (redStreakIdx === 0) {
+          game.redDriftDirection = Math.random() < 0.5 ? -1 : 1;
+        }
+        // No vertical drift — red bar gaps are clustered at the same height
+        // (no gapY shift)
+      }
+
       game.obstacles.push({
         x: LOGICAL_WIDTH,
         gapY: gapY,
         gapSize: gapSize,
         width: 60,
         scored: false,
+        isRed: isRedStreak,
       });
     }
 
@@ -524,8 +548,21 @@
         game.spawnTimer += dt;
         if (game.spawnTimer >= game.spawnInterval) {
           spawnObstacle();
-          const delay = SPAWN_INTERVAL_MIN + Math.floor(Math.random() * (SPAWN_INTERVAL_MAX - SPAWN_INTERVAL_MIN));
-          game.spawnInterval = delay;
+          // Next spawn interval: tighter (40-60) if next obstacle is in the red streak
+          const nextObs = game.obstacleCountInTier + 1;
+          const nextInStreak = game.redStreakStart !== -1 &&
+            nextObs >= game.redStreakStart &&
+            nextObs < game.redStreakStart + game.redStreakLength;
+          if (nextInStreak) {
+            // Tweak 1: prep space before the first red obstacle
+            if (nextObs === game.redStreakStart) {
+              game.spawnInterval = 100 + Math.floor(Math.random() * 21);
+            } else {
+              game.spawnInterval = 65 + Math.floor(Math.random() * 21);
+            }
+          } else {
+            game.spawnInterval = SPAWN_INTERVAL_MIN + Math.floor(Math.random() * (SPAWN_INTERVAL_MAX - SPAWN_INTERVAL_MIN));
+          }
           game.spawnTimer = 0;
         }
 
@@ -575,6 +612,10 @@
               game.glowIntensity = 20;
               sfxLevelUp();
               game.comboCount = 0;
+              // Start a new 3-bar red streak: bars 2-5 within this tier
+              game.redStreakStart = 2 + Math.floor(Math.random() * 4);
+              game.redStreakLength = 3;
+              game.obstacleCountInTier = 0;
             }
             // Regular score sound
             sfxDing();
@@ -812,9 +853,9 @@
       ctx.textAlign = 'center';
       ctx.lineWidth = 2;
       ctx.strokeStyle = '#000000';
-      ctx.strokeText('Prototype v0.6.2', LOGICAL_WIDTH / 2, LOGICAL_HEIGHT - 15);
+      ctx.strokeText('Prototype v0.6.3', LOGICAL_WIDTH / 2, LOGICAL_HEIGHT - 15);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.60)';
-      ctx.fillText('Prototype v0.6.2', LOGICAL_WIDTH / 2, LOGICAL_HEIGHT - 15);
+      ctx.fillText('Prototype v0.6.3', LOGICAL_WIDTH / 2, LOGICAL_HEIGHT - 15);
     }
 
     function drawGame() {
@@ -830,10 +871,15 @@
 
         // --- Top bar ---
         const topBodyH = topHeight - wickLen;
-        // Vertical gradient: dark green top → light green bottom (lit toward gap)
+        // Vertical gradient: dark green top → light green bottom (lit toward gap), or red gradient for streak
         const topGrad = ctx.createLinearGradient(0, 0, 0, topBodyH);
-        topGrad.addColorStop(0, '#009624');
-        topGrad.addColorStop(1, '#00e676');
+        if (obs.isRed) {
+          topGrad.addColorStop(0, '#b71c1c');
+          topGrad.addColorStop(1, '#f44336');
+        } else {
+          topGrad.addColorStop(0, '#009624');
+          topGrad.addColorStop(1, '#00e676');
+        }
         // Body fill + black border
         ctx.fillStyle = topGrad;
         ctx.strokeStyle = wickColour;
@@ -849,10 +895,15 @@
         // --- Bottom bar ---
         const bottomBodyY = bottomY + wickLen;
         const bottomBodyH = bottomHeight - wickLen;
-        // Vertical gradient: light green top → dark green bottom
+        // Vertical gradient: light green top → dark green bottom, or reversed red gradient for streak
         const bottomGrad = ctx.createLinearGradient(0, bottomBodyY, 0, bottomBodyY + bottomBodyH);
-        bottomGrad.addColorStop(0, '#00e676');
-        bottomGrad.addColorStop(1, '#009624');
+        if (obs.isRed) {
+          bottomGrad.addColorStop(0, '#f44336');
+          bottomGrad.addColorStop(1, '#b71c1c');
+        } else {
+          bottomGrad.addColorStop(0, '#00e676');
+          bottomGrad.addColorStop(1, '#009624');
+        }
         // Body fill + black border
         ctx.fillStyle = bottomGrad;
         ctx.fillRect(obs.x, bottomBodyY, obs.width, bottomBodyH);

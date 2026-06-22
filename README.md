@@ -73,7 +73,14 @@ Then in your repo **Settings → Pages → Build and deployment → Source: Depl
 
 ## Changelog
 
-### v0.6.2 — Tier-coloured exhaust & glow (current)
+### v0.6.3 — Red Streak: 3 red bars per tier (current)
+
+- 🔴 **Red Streak** — 3 red obstacles appear in every tier at a random position (bars 2-5), with tighter spawn interval (65-85 frames) for a sudden burst of pace
+- 🟢 **Green start** — first 3 obstacles in Apprentice tier are always green for a smooth opening
+- 📐 **Clustered gaps** — red bar gaps stay at the same height (no drift), making them easier to navigate
+- 🏷️ Version footer bumped to v0.6.3
+
+### v0.6.2 — Tier-coloured exhaust & glow
 
 - 🔥 **Aggressive smoke tint** — exhaust smoke stages tinted 80% with tier colour, fire core stays orange
 - 🔥 **Dual-radial glow** — every particle gets a warm orange centre + tier-coloured outer rim via pre-rendered glow overlays
