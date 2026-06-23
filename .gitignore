@@ -227,3 +227,7 @@ fusion_output
 # Hermes Agent files (internal use only)
 .hermes.md
 memory_bank.md
+
+# Hermes approval sentinels (temporary)
+.hermes-commit-approved
+.hermes-push-approved
