@@ -73,7 +73,15 @@ Then in your repo **Settings → Pages → Build and deployment → Source: Depl
 
 ## Changelog
 
-### v0.6.7 — More random obstacle ordering (current)
+### v0.6.8 — GTA 5 "Wasted" death screen
+
+- 🎬 **GTA 5 "wasted" death screen** — image-based (`assets/wasted.png`) with dark horizontal bar, slow-motion effect
+- 🎞️ **Slow-motion** — 30 frames at 0.25× factor (~2s), colours restore to normal when game-over panel appears
+- 🖤 **Dark bar** — solid `rgba(0,0,0,0.7)`, 122px tall, full-width, no gradient
+- 🖼️ **Wasted image** — `assets/wasted.png` replaces canvas-drawn text, subtle scale animation (0.85→1.0)
+- 🏷️ Version footer bumped to v0.6.8
+
+### v0.6.7 — More random obstacle ordering
 
 - 🎲 **Green start randomised** — first 1-3 obstacles are safe green bars (was fixed 2)
 - 🎲 **Red streak position randomised** — 3 red bars appear anywhere in bars 1-7 per tier (was narrow 4-6 / 2-5 ranges)

@@ -219,3 +219,11 @@ __marimo__/
 
 # Local project files (not checked in)
 /local/
+
+# Internal test artifacts
+fusion_output/
+fusion_output
+
+# Hermes Agent files (internal use only)
+.hermes.md
+memory_bank.md
